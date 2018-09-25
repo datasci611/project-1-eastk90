@@ -1,0 +1,162 @@
+---
+title: "Project1"
+author: "Dongneuck Lee (EAST)"
+date: "`r format(Sys.time(), '%m/%d/%Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(plotly)
+data(esoph)
+```
+
+## Data introduction
+
+ `esoph` data is from a case-control study of esophageal cancer in Ille-et-Vilaine, France. The first column `agegp` is age group of participants. It has six group. `alcgp` and `tobgp` colums are alcohol and tobacco consumption groups. They have 4 levels each. `ncases` and `ncontrols` are numbers of cases(participants with cancer) and controls(participants without cancer). Each row means distinct dombination of levels. The object of this project is to investigate factor(s) causing esophageal cancer using exploratory data analysis. Data transformation process was performed for the analysis.
+ 
+```{r}
+ esoph<-as.tibble(esoph)
+ esoph
+
+```
+ 
+ 
+
+## Exploratory Data Analysis 1
+ To begin with, let's look at the case and control counts by age. Generally, there seems to be a covariation of the age and the rate of repatriation. However, if there is a relationship between age, alcohol consumption and tobacco consumption, and if cancer actually directly affects the onset of cancer, the relationship between age and onset of disease can be interpreted to be due to two other factors .
+
+```{r}
+
+esoph.long <-
+  esoph  %>% 
+  gather(key = case.control, value = NN, ncases : ncontrols)
+
+
+esoph.long.alc <- esoph.long %>%
+  select(-tobgp) %>%
+  group_by( agegp, alcgp, case.control ) %>%
+  summarise(NN=sum(NN))
+
+esoph.long.tob <- esoph.long %>%
+  select(-alcgp) %>%
+  group_by( agegp, tobgp, case.control ) %>%
+  summarise(NN=sum(NN))
+
+  
+  
+  g1<-ggplot(data = esoph.long.alc) +
+  geom_bar(mapping = aes(x = agegp, y = NN, fill=case.control), stat = "identity")+
+  labs(title="Age and Count",
+       x ="Age group", y = "Number of Participants")
+  ggplotly(g1)
+```
+
+
+In the graph below, the consomuption of alcohol and tobacco is large in the 45-54 and 55-64 age groups, and tends to decrease thereafter. This seems to be highly related to a large increase in onset of disease at 45-64.
+```{r}
+g1.alc<-ggplot(data = esoph.long.alc) +
+    geom_bar(mapping = aes(x = agegp, y = NN, fill=alcgp),
+             stat = "identity", position = "fill", alpha = .5)  +
+    labs(title="Age and Alcohol consumption",
+         x ="Age group", y = "Proportion")
+  
+  ggplotly(g1.alc)
+  
+  
+g1.alc<-ggplot(data = esoph.long.tob) +
+   geom_bar(mapping = aes(x = agegp, y = NN, fill=tobgp),
+           stat = "identity", position = "fill", alpha = .5)  +
+   labs(title="Age and tobacco consumption",
+       x ="Age group", y = "Proportion")
+
+ggplotly(g1.alc)
+  
+  
+  
+  
+ 
+```
+
+
+
+To make it easier to compare proportions across groups, I drew two additional graphs. They display the proportion of alcohol and tobacco consumption groups in cases and control groups. At 45-64 age, the consumption of alcohol and tobacco increased and the incidence of esophageal cancer increased significantly during this period.
+
+```{r}
+  g2<-ggplot(data = esoph.long.alc) +
+    geom_bar(mapping = aes(x = agegp, y = NN, fill=case.control, colour=alcgp),
+             stat = "identity", position = "fill", alpha = .5)  +
+    labs(title="Age and Alcohol consumption",
+         x ="Age group", y = "Proportion")
+  
+  ggplotly(g2)
+  
+
+  g3<-ggplot(data = esoph.long.tob) +
+    geom_bar(mapping = aes(x = agegp, y = NN, fill=case.control, colour=tobgp),
+             stat = "identity", position = "fill", alpha = .5)  +
+    labs(title="Age and Tobacco consumption",
+         x ="Age group", y = "Proportion")
+
+  ggplotly(g3)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Exploratory Data Analysis 2
+
+ I drew the number of participants and the number of cases according to the combination of alcohol consumption and tobacco consumption. The second graph is only the color adjusted in the first graph, which I think is a better color match with the meaning of the data. Each cell in the third graph represents 'number of cases / number of participants' for each combination.
+
+```{r}
+esoph2<-esoph %>%
+  mutate(total=ncases+ncontrols) %>%
+  group_by( alcgp ,   tobgp) %>%
+  summarise(total=sum(total), ncases=sum(ncases), ratio=ncases/total)
+
+
+  
+  
+  g4<-ggplot(esoph2) +
+    geom_count(mapping = aes(x = alcgp, y = tobgp, size=total), color="pink", alpha=0.5)+
+    geom_count(mapping = aes(x = alcgp, y = tobgp, size=ncases), color="cyan2", alpha=0.8 ) +
+    scale_size_area(max_size = 30)  +
+    labs(x ="Alcohol consumption", y = "Tobacco consumption")
+  ggplotly(g4) 
+  
+  
+  g4.2<-g4+geom_count( mapping = aes(x = alcgp, y = tobgp, size=total), color="red")+
+    geom_count( mapping = aes(x = alcgp, y = tobgp, size=ncases))
+  
+  ggplotly(g4.2)
+  
+  
+  
+  g5<-ggplot(esoph2, mapping = aes(x = alcgp, y = tobgp)) +
+      geom_tile(mapping = aes(fill = ratio)) +
+      scale_fill_gradientn(colours = c("#ddf1da", "#fdae61", "#d53e4f"), values = c(0,0.6,1)) +
+      labs(x ="Alcohol consumption", y = "Tobacco consumption")
+  ggplotly(g5)
+```
+
+
+## Results
+ All three variables are associated with incidence of esophageal cancer. In addition, the three variables are also associated with each other. Therefore, using exploratory data analysis, it is difficult to determine the sole effect of factors that cause cancer. However, we can figure out that  the consumption of alcohol and tobacco increased at 45-64 age, and the incidence of esophageal cancer increased significantly during this period. 
+ In order to see the effect of alcohol and tobacco consumption on esophageal cancer, I drew number of participants and the number of cases grpah for each combination. The graph shows that the consumption of tobacco and alcohol increases the incidence of cancer, in particular, the consumption of alcohol affect it even severly.
+
+
+
+
+
+
+
+
